@@ -14,9 +14,36 @@ void setup() {
   Serial.print("Hotspot IP address: ");
   Serial.println(WiFi.softAPIP());
 
+  EEPROM.begin(sizeof(WiFiCredentials));
+  EEPROM.get(0, storedCredentials);
+
+  if (strlen(storedCredentials.ssid) > 0 && strlen(storedCredentials.password) > 0) {
+    // Try to connect to the saved Wi-Fi network
+    WiFi.begin(storedCredentials.ssid, storedCredentials.password);
+    Serial.println("Connecting to saved Wi-Fi...");
+    unsigned long connectStartTime = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - connectStartTime < 60000) {
+      delay(1000);
+      Serial.println("Connecting to Wi-Fi...");
+    }
+    
+    if (WiFi.status() == WL_CONNECTED) {
+      // Successfully connected, so stop the hotspot
+      WiFi.softAPdisconnect(true);
+      Serial.println("Connected to Wi-Fi.");
+    } else {
+      // Could not connect in time, start hotspot
+      Serial.println("Could not connect to saved Wi-Fi. Starting hotspot.");
+    }
+  } else {
+    // No saved credentials, start hotspot
+    Serial.println("No saved Wi-Fi credentials. Starting hotspot.");
+  }
+
   server.on("/", HTTP_POST, handlePost);
   server.begin();
 }
+
 
 void loop() {
   server.handleClient();
