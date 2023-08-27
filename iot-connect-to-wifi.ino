@@ -30,6 +30,7 @@ void setup() {
   Serial.println(WiFi.softAPIP());
 
   server.on("/", HTTP_POST, handlePost);
+  server.on("/", HTTP_DELETE, deleteCredentials);  // Handle DELETE request
   server.begin();
 
   // Try to connect to the saved Wi-Fi network
@@ -83,4 +84,23 @@ void handlePost() {
     server.send(400, "text/plain", "Wi-Fi connection failed. Please check the credentials.");
     Serial.println("Failed to connect to new Wi-Fi.");
   }
+}
+
+void deleteCredentials() {
+  Serial.println("Received DELETE request. Deleting credentials...");
+
+  // Clear the stored credentials in EEPROM
+  memset(&storedCredentials, 0, sizeof(storedCredentials));
+  EEPROM.put(0, storedCredentials);
+  EEPROM.commit();
+
+  // Disconnect from Wi-Fi if connected
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("Disconnecting from Wi-Fi...");
+    WiFi.disconnect();
+  }
+
+  Serial.println("Restarting ESP8266...");
+  // Restart the ESP8266
+  ESP.restart();
 }
