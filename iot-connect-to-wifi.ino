@@ -1,10 +1,18 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
+#include <EEPROM.h>
 
 const char* ssid = "SetupHotspot";
 const char* password = "password123";
 
 ESP8266WebServer server(80);
+
+struct WiFiCredentials {
+  char ssid[32];
+  char password[64];
+};
+
+WiFiCredentials storedCredentials;
 
 void setup() {
   Serial.begin(115200);
@@ -26,7 +34,7 @@ void setup() {
       delay(1000);
       Serial.println("Connecting to Wi-Fi...");
     }
-    
+
     if (WiFi.status() == WL_CONNECTED) {
       // Successfully connected, so stop the hotspot
       WiFi.softAPdisconnect(true);
@@ -44,7 +52,6 @@ void setup() {
   server.begin();
 }
 
-
 void loop() {
   server.handleClient();
   // Add other loop functionality here if needed
@@ -55,16 +62,18 @@ void handlePost() {
   String password = server.arg("password");
 
   // Connect to the specified Wi-Fi network
-  WiFi.begin(ssid.c_str(), password.c_str());
+  WiFi.begin(storedCredentials.ssid, storedCredentials.password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     Serial.println("Connecting to WiFi...");
   }
   server.send(200, "text/plain", "Wi-Fi credentials received and connected to the network.");
 
-  Serial.println("\nConnected to WiFi");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());  //Print the local IP
+  // Store the credentials in EEPROM
+  strncpy(storedCredentials.ssid, ssid.c_str(), sizeof(storedCredentials.ssid));
+  strncpy(storedCredentials.password, password.c_str(), sizeof(storedCredentials.password));
+  EEPROM.put(0, storedCredentials);
+  EEPROM.commit();
 
   // Stop the hotspot
   WiFi.softAPdisconnect(true);
